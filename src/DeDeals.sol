@@ -1,5 +1,5 @@
 /**
- *Submitted for verification at polygonscan.com on 2023-04-15
+ * Submitted for verification at polygonscan.com on 2023-04-15
  */
 
 // SPDX-License-Identifier: MIT License
@@ -7,38 +7,36 @@
 pragma solidity ^0.8.19;
 
 contract DeDeals {
-    uint executedBalance;
+    uint256 executedBalance;
 
     struct Deal {
-        uint dealId;
+        uint256 dealId;
         address sellerAddress;
         address buyerAddress;
-        uint sellerDeposit;
-        uint buyerDeposit;
-        uint amountOfClaim;
-        uint depositReleaseTime;
-        uint grantDeadline;
-        uint executeDeadlineInterval;
+        uint256 sellerDeposit;
+        uint256 buyerDeposit;
+        uint256 amountOfClaim;
+        uint256 depositReleaseTime;
+        uint256 grantDeadline;
+        uint256 executeDeadlineInterval;
     }
 
-    mapping(uint => Deal) dealIdMap;
-    uint dealIdMapCount;
+    mapping(uint256 => Deal) dealIdMap;
+    uint256 dealIdMapCount;
 
     event eventDeal(Deal _deal);
 
-    event eventMsgValue(uint _msgValue);
+    event eventMsgValue(uint256 _msgValue);
 
-    function claim(
-        uint _grantDeadline,
-        uint _executeDeadlineInterval
-    ) public payable returns (Deal memory) {
+    function claim(uint256 _grantDeadline, uint256 _executeDeadlineInterval) public payable returns (Deal memory) {
+        require(msg.value >= dealIdMap[0].amountOfClaim, "Insufficient deposit for claim");
         dealIdMapCount = dealIdMapCount + 1;
         address sellerAddress = msg.sender;
         address buyerAddress;
-        uint sellerDeposit = msg.value;
-        uint buyerDeposit = 0;
-        uint amountOfClaim = msg.value;
-        uint depositReleaseTime = block.timestamp + _grantDeadline;
+        uint256 sellerDeposit = msg.value;
+        uint256 buyerDeposit = 0;
+        uint256 amountOfClaim = msg.value;
+        uint256 depositReleaseTime = block.timestamp + _grantDeadline;
 
         dealIdMap[dealIdMapCount] = Deal(
             dealIdMapCount,
@@ -53,32 +51,25 @@ contract DeDeals {
         );
 
         emit eventDeal(dealIdMap[dealIdMapCount]);
-
-        emit eventMsgValue(msg.value);
-
         return dealIdMap[dealIdMapCount];
     }
 
-    function grant(uint _dealId) public payable returns (Deal memory) {
+    function grant(uint256 _dealId) public payable returns (Deal memory) {
         //Check if msg.value matches the claimAmount of the corresponding deal.
-        requireMsgValueEqualClaimAmount(
-            msg.value,
-            dealIdMap[_dealId].amountOfClaim
-        );
+        requireMsgValueEqualClaimAmount(msg.value, dealIdMap[_dealId].amountOfClaim);
         //Check to see if the current time has not exceeded the depositReleaseTime.
         requireDepositReleaseTimeNotPassed(_dealId);
 
         dealIdMap[_dealId].buyerAddress = msg.sender;
         dealIdMap[_dealId].sellerDeposit += msg.value;
-        dealIdMap[_dealId].depositReleaseTime += dealIdMap[_dealId]
-            .executeDeadlineInterval;
+        dealIdMap[_dealId].depositReleaseTime += dealIdMap[_dealId].executeDeadlineInterval;
 
         emit eventDeal(dealIdMap[_dealId]);
 
         return dealIdMap[_dealId];
     }
 
-    function buyerExecuteSeller(uint _dealId) public payable {
+    function buyerExecuteSeller(uint256 _dealId) public payable {
         //Check if msg.sender is the buyer of the corresponding deal.
         requireMsgSenderEqualbuyer(_dealId, msg.sender);
         //Check if msg.value is exactly twice the claimAmount.
@@ -91,13 +82,12 @@ contract DeDeals {
         executedBalance += dealIdMap[_dealId].sellerDeposit;
         dealIdMap[_dealId].sellerDeposit = 0;
         dealIdMap[_dealId].buyerDeposit += msg.value;
-        dealIdMap[_dealId].depositReleaseTime += dealIdMap[_dealId]
-            .executeDeadlineInterval;
+        dealIdMap[_dealId].depositReleaseTime += dealIdMap[_dealId].executeDeadlineInterval;
 
         emit eventDeal(dealIdMap[_dealId]);
     }
 
-    function sellerExecuteBuyer(uint _dealId) public payable {
+    function sellerExecuteBuyer(uint256 _dealId) public payable {
         //Check if msg.sender is the seller of the corresponding deal.
         requireMsgSenderEqualseller(_dealId, msg.sender);
         //Check if msg.value is exactly twice the claimAmount
@@ -110,106 +100,64 @@ contract DeDeals {
         executedBalance += dealIdMap[_dealId].buyerDeposit;
         dealIdMap[_dealId].buyerDeposit = 0;
         dealIdMap[_dealId].sellerDeposit += msg.value;
-        dealIdMap[_dealId].depositReleaseTime += dealIdMap[_dealId]
-            .executeDeadlineInterval;
+        dealIdMap[_dealId].depositReleaseTime += dealIdMap[_dealId].executeDeadlineInterval;
 
         emit eventDeal(dealIdMap[_dealId]);
     }
 
-    function releaseDeposits(
-        uint _dealId
-    ) public returns (Deal memory, uint, uint) {
+    function releaseDeposits(uint256 _dealId) public returns (Deal memory, uint256, uint256) {
         //Check if the current time has not exceeded the depositReleaseTime.
         requireDepositReleaseTimePassed(_dealId);
 
-        payable(dealIdMap[_dealId].buyerAddress).transfer(
-            dealIdMap[_dealId].buyerDeposit
-        );
+        payable(dealIdMap[_dealId].buyerAddress).transfer(dealIdMap[_dealId].buyerDeposit);
         dealIdMap[_dealId].buyerDeposit = 0;
 
-        payable(dealIdMap[_dealId].sellerAddress).transfer(
-            dealIdMap[_dealId].sellerDeposit
-        );
+        payable(dealIdMap[_dealId].sellerAddress).transfer(dealIdMap[_dealId].sellerDeposit);
         dealIdMap[_dealId].sellerDeposit = 0;
 
         emit eventDeal(dealIdMap[_dealId]);
 
-        return (
-            dealIdMap[_dealId],
-            block.timestamp,
-            dealIdMap[_dealId].depositReleaseTime
-        );
+        return (dealIdMap[_dealId], block.timestamp, dealIdMap[_dealId].depositReleaseTime);
     }
 
-    function getDeal(uint _dealId) public view returns (Deal memory) {
+   function getDeal(uint _dealId) public view returns (Deal memory) {
+        require(_dealId > 0 && _dealId <= dealIdMapCount, "INVALID_DEAL_ID");
         return dealIdMap[_dealId];
     }
 
-    function requireDepositReleaseTimeNotPassed(uint _dealId) public view {
-        require(
-            block.timestamp < dealIdMap[_dealId].depositReleaseTime,
-            "DepositReleaseTime already passed."
-        );
+
+    function requireDepositReleaseTimeNotPassed(uint256 _dealId) public view {
+        require(block.timestamp < dealIdMap[_dealId].depositReleaseTime, "DepositReleaseTime already passed.");
     }
 
-    function requireDepositReleaseTimePassed(uint _dealId) public view {
-        require(
-            block.timestamp >= dealIdMap[_dealId].depositReleaseTime,
-            "DepositReleaseTime has not yet passed."
-        );
+    function requireDepositReleaseTimePassed(uint256 _dealId) public view {
+        require(block.timestamp >= dealIdMap[_dealId].depositReleaseTime, "DepositReleaseTime has not yet passed.");
     }
 
-    function requireMsgValueEqualDoubleClaimAmount(
-        uint _dealId,
-        uint _msgValue
-    ) public view {
+    function requireMsgValueEqualDoubleClaimAmount(uint256 _dealId, uint256 _msgValue) public view {
         require(
             _msgValue == 2 * dealIdMap[_dealId].amountOfClaim,
             "The amount transferred is not exactly twice the amount of claim."
         );
     }
 
-    function requireMsgValueEqualClaimAmount(
-        uint _msgValue,
-        uint _amountOfClaim
-    ) public pure {
-        require(
-            _msgValue == _amountOfClaim,
-            "The amount transferred is not exactly the amount of claim."
-        );
+    function requireMsgValueEqualClaimAmount(uint256 _msgValue, uint256 _amountOfClaim) public pure {
+        require(_msgValue == _amountOfClaim, "The amount transferred is not exactly the amount of claim.");
     }
 
-    function requireMsgSenderEqualseller(
-        uint _dealId,
-        address _msgSender
-    ) public view {
-        require(
-            _msgSender == dealIdMap[_dealId].sellerAddress,
-            "MsgSender does not match the specified deal seller."
-        );
+    function requireMsgSenderEqualseller(uint256 _dealId, address _msgSender) public view {
+        require(_msgSender == dealIdMap[_dealId].sellerAddress, "MsgSender does not match the specified deal seller.");
     }
 
-    function requireMsgSenderEqualbuyer(
-        uint _dealId,
-        address _msgSender
-    ) public view {
-        require(
-            _msgSender == dealIdMap[_dealId].buyerAddress,
-            "MsgSender does not match the specified deal buyer."
-        );
+    function requireMsgSenderEqualbuyer(uint256 _dealId, address _msgSender) public view {
+        require(_msgSender == dealIdMap[_dealId].buyerAddress, "MsgSender does not match the specified deal buyer.");
     }
 
-    function requiresellerDepositNotEqualZero(uint _dealId) public view {
-        require(
-            dealIdMap[_dealId].sellerDeposit != 0,
-            "seller's deposit is empty."
-        );
+    function requiresellerDepositNotEqualZero(uint256 _dealId) public view {
+        require(dealIdMap[_dealId].sellerDeposit != 0, "seller's deposit is empty.");
     }
 
-    function requirebuyerDepositNotEqualZero(uint _dealId) public view {
-        require(
-            dealIdMap[_dealId].buyerDeposit != 0,
-            "buyer's deposit is empty."
-        );
+    function requirebuyerDepositNotEqualZero(uint256 _dealId) public view {
+        require(dealIdMap[_dealId].buyerDeposit != 0, "buyer's deposit is empty.");
     }
 }
