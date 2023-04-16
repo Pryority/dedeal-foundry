@@ -1,0 +1,8 @@
+{
+  "name": "dedeal",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:Pryority/dedeal.git",
+  "author": "pryority <matthewapryor@gmail.com>",
+  "license": "MIT"
+}
