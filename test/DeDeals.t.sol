@@ -43,28 +43,25 @@ contract DeDealsTest is Test {
     }
 
     function test_GetDeal_InvalidDealId() public payable {
-        // Call the getDeal function with an invalid dealId and assert that it reverts
-        (bool success, ) = address(dedeals).call(
-            abi.encodeWithSignature("getDeal(uint256)", 999)
-        );
-        assertTrue(success, "getDeal should revert with invalid dealId");
+        (bool success,) = address(dedeals).call(abi.encodeWithSignature("getDeal(uint256)", 100));
+        vm.expectRevert("INVALID_DEAL_ID");
+        dedeals.getDeal(101);
     }
 
     function test_Claim_InsufficientDeposit() public payable {
         // Call the claim function with an insufficient deposit and assert that it reverts
-        (bool success, ) = address(dedeals).call{value: 50}(
-            abi.encodeWithSignature("claim(uint256,uint256)", 100, 3600)
-        );
+        (bool success,) = address(dedeals).call{value: 50}(abi.encodeWithSignature("claim(uint256,uint256)", 100, 3600));
         assertTrue(success, "claim should revert with insufficient deposit");
+        vm.expectRevert("Insufficient deposit for claim");
+        address(dedeals).call{value: 50}(abi.encodeWithSignature("claim(uint256,uint256)", 100, 3600));
     }
 
     function test_Claim_ExceededGrantDeadline() public payable {
         vm.roll(10);
 
         // Call the claim function and assert that it reverts
-        (bool success, ) = address(dedeals).call{value: 100}(
-            abi.encodeWithSignature("claim(uint256,uint256)", 100, 3600)
-        );
+        (bool success,) =
+            address(dedeals).call{value: 100}(abi.encodeWithSignature("claim(uint256,uint256)", 100, 3600));
         assertTrue(success, "claim should revert after grant deadline");
     }
 
@@ -73,9 +70,8 @@ contract DeDealsTest is Test {
         DeDeals.Deal memory deal1 = dedeals.claim(100, 3600);
 
         // Call the claim function again and assert that it reverts
-        (bool success, ) = address(dedeals).call{value: 100}(
-            abi.encodeWithSignature("claim(uint256,uint256)", 100, 3600)
-        );
+        (bool success,) =
+            address(dedeals).call{value: 100}(abi.encodeWithSignature("claim(uint256,uint256)", 100, 3600));
         assertTrue(success, "claim should revert with existing deal");
     }
 }
